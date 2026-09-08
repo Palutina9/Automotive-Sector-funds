@@ -79,7 +79,7 @@ else:
     print("Skipping market data entirely — site unreachable")
 
 # ---------- Agah / Dariush style (JSON API) ----------
-def apietelaat(name, api_periodic, api_daily):
+def apietelaat(name, api_periodic, api_daily, navapi):
     response = safe_get(api_periodic)
     if response is None:
         print(f"Skipping {name} periodic data — site unreachable")
@@ -97,8 +97,14 @@ def apietelaat(name, api_periodic, api_daily):
     else:
         print(f"Skipping {name} daily return — site unreachable")
 
-# ---------- Khodran (form POST + HTML table) ----------
-def ajaxetelaat(name, link, payload):
+    navnum = safe_get(navapi)
+    if navnum is not None:
+        jadval.append({name + "_fundNAV": fa_to_float(navnum.json()['nav'])})
+    else:
+        print(f"Skipping {name} NAV — site unreachable")
+
+
+def ajaxetelaat(name, link, payload, navapi):
     resp = safe_post(link, data=payload)
     if resp is None:
         print(f"Skipping {name} — site unreachable")
@@ -106,7 +112,6 @@ def ajaxetelaat(name, link, payload):
 
     soup = BeautifulSoup(resp.text, "html.parser")
     wanted_rows = [3, 4, 5, 6, 7, 8, 11, 12, 13]
-
     for i, row in enumerate(soup.find_all("tr"), start=1):
         if i in wanted_rows:
             cells = [td.get_text(strip=True) for td in row.find_all("td")]
@@ -116,6 +121,15 @@ def ajaxetelaat(name, link, payload):
                     jadval.append({name + "_fundDailyReturn": value})
                 else:
                     jadval.append({name + "_fundSimpleReturn": value})
+
+    navnum = safe_get(navapi)
+    if navnum is not None:
+        nav = navnum.json()
+        if isinstance(nav, str):
+            nav = json.loads(nav)
+        jadval.append({name + "_fundNAV": fa_to_float(nav['dailyTotalNetAssetValue'])})
+    else:
+        print(f"Skipping {name} NAV — site unreachable")
 
 # ---------- Run all three ----------
 #AutoAgah
