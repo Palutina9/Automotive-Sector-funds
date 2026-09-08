@@ -43,12 +43,12 @@ api_periodic = "https://agahsectorfund.ir/api/v1/public/fundReturnPeriodic/2"
 api_daily = "https://agahsectorfund.ir/api/v1/public/fundReturnDaily/2"
 
 # fixed section
-response = safe_get(api_periodic, timeout = 10)
+response = safe_get(api_periodic)
 response.raise_for_status()
 data = response.json()
 rows = data['rows'][:8]
 
-roozaneh = safe_get(api_daily, timeout = 10)
+roozaneh = safe_get(api_daily)
 roozaneh.raise_for_status()
 data_daily = roozaneh.json()[0]
 
@@ -70,7 +70,7 @@ jadval.append({
 
 
 def apietelaat(name, api_periodic, api_daily, navapi):
-    response = safe_get(api_periodic, headers= headers, timeout = 10)
+    response = safe_get(api_periodic, headers= headers)
     response.raise_for_status()
     data = response.json()
     rows = data['rows'][:8]
@@ -79,12 +79,12 @@ def apietelaat(name, api_periodic, api_daily, navapi):
             name + "_fundSimpleReturn": row['fundSimpleReturn']
             })
 
-    roozaneh = safe_get(api_daily, timeout = 10)
+    roozaneh = safe_get(api_daily)
     data_daily = roozaneh.json()[0]
     jadval.append({
         name + "_fundDailyReturn": data_daily['fundDailyReturn'],
         })
-    navnum = requests.get(navapi, timeout = 10)
+    navnum = requests.get(navapi)
     navnum.raise_for_status()
     jadval.append({
         name + "_fundNAV": fa_to_float(navnum.json()['nav']),
