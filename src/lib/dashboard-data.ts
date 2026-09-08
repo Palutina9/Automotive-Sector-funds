@@ -56,10 +56,10 @@ const PERIOD_KEYS = [
 ] as const;
 
 const PERIOD_LABELS_FA: Record<string, string> = {
-  SIMPLE_WEEKLY: "بازدهی 7 روز گذشته",
-  SIMPLE_MONTHLY: "بازدهی 30 روز گذشته",
-  SIMPLE_MONTHLY3: "بازدهی 90 روز گذشته",
-  SIMPLE_MONTHLY6: "بازدهی 180 روز گذشته",
+  SIMPLE_WEEKLY: "بازدهی ۷ روز گذشته",
+  SIMPLE_MONTHLY: "بازدهی ۳۰ روز گذشته",
+  SIMPLE_MONTHLY3: "بازدهی ۹۰ روز گذشته",
+  SIMPLE_MONTHLY6: "بازدهی ۱۸۰ روز گذشته",
   SIMPLE_YEARLY: "بازدهی یک‌ساله",
   SIMPLE_ALL_DAYS: "بازدهی از شروع فعالیت",
   MAX_SIMPLE_WEEKLY: "بیشترین بازدهی هفتگی از زمان تاسیس",
