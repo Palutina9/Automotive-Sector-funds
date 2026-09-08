@@ -51,12 +51,8 @@ function formatPercent(n: number | null | undefined): string {
 
 function formatToman(n: number | null | undefined): string {
   if (n == null || !isFinite(n)) return "—";
-  // Convert to میلیارد تومان (billion tomans) for readability.
-  const billions = n / 1e9;
-  if (billions >= 1) {
-    return `${billions.toLocaleString("fa-IR", { maximumFractionDigits: 1 })} میلیارد ت`;
-  }
-  return `${n.toLocaleString("fa-IR")} ت`;
+  // Plain number with thousands separators — no abbreviation.
+  return n.toLocaleString("fa-IR");
 }
 
 function formatDateTime(iso: string | null): string {
@@ -334,26 +330,26 @@ export default function Home() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm border-collapse">
                 <thead className="sticky top-0 bg-slate-50 border-b border-slate-200">
-                  <tr className="text-slate-700">
-                    <th className="px-4 py-3 text-right font-semibold whitespace-nowrap border-l border-slate-200">
+                  <tr className="text-slate-800">
+                    <th className="px-4 py-3 text-center font-bold whitespace-nowrap border-l border-slate-200">
                       دوره
                     </th>
-                    <th className="px-3 py-3 text-right font-semibold whitespace-nowrap border-l border-slate-200">
-                      <div className="flex items-center gap-1.5">
+                    <th className="px-3 py-3 text-center font-bold whitespace-nowrap border-l border-slate-200">
+                      <div className="flex items-center justify-center gap-1.5">
                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
                         بازه زمانی
                       </div>
                     </th>
-                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap border-l border-slate-200 bg-blue-50/50">
+                    <th className="px-3 py-3 text-center font-bold whitespace-nowrap border-l border-slate-200 bg-blue-50/50">
                       بازار
                       <div className="text-[10px] font-normal text-slate-400 mt-0.5">شاخص کل</div>
                     </th>
                     {data?.funds.map((f) => (
                       <th
                         key={f.slug}
-                        className="px-3 py-3 text-left font-semibold whitespace-nowrap border-l border-slate-200 last:border-l-0"
+                        className="px-3 py-3 text-center font-bold whitespace-nowrap border-l border-slate-200 last:border-l-0 text-slate-900"
                       >
-                        <div className="flex items-center gap-1.5 justify-end">
+                        <div className="flex items-center justify-center gap-1.5">
                           {f.manual && (
                             <Badge
                               variant="outline"
@@ -430,22 +426,22 @@ export default function Home() {
                           key={p.key}
                           className="border-b border-slate-100 hover:bg-slate-50/70 transition"
                         >
-                          <td className="px-4 py-3 font-medium text-slate-900 whitespace-nowrap border-l border-slate-200">
+                          <td className="px-4 py-3 font-bold text-slate-900 whitespace-nowrap border-l border-slate-200 text-center">
                             {p.labelFa}
                           </td>
-                          <td className="px-3 py-3 text-xs text-slate-500 whitespace-nowrap border-l border-slate-200 font-mono">
+                          <td className="px-3 py-3 text-xs text-slate-600 whitespace-nowrap border-l border-slate-200 font-mono text-center">
                             <div>{toFaDigits(p.fromDate)}</div>
                             <div className="text-slate-400">تا {toFaDigits(p.toDate)}</div>
                           </td>
                           <td className={cn(
-                            "px-3 py-3 text-left font-mono text-xs whitespace-nowrap border-l border-slate-200 bg-blue-50/30",
+                            "px-3 py-3 text-center font-mono text-sm whitespace-nowrap border-l border-slate-200 bg-blue-50/30 font-bold",
                             returnColorClass(p.marketSimpleReturn),
                           )}>
-                            <div className="flex items-center justify-end gap-1">
+                            <div className="flex items-center justify-center gap-1">
                               {p.marketSimpleReturn != null && p.marketSimpleReturn !== 0 && (
                                 p.marketSimpleReturn > 0
-                                  ? <ArrowUp className="w-3 h-3" />
-                                  : <ArrowDown className="w-3 h-3" />
+                                  ? <ArrowUp className="w-3.5 h-3.5" />
+                                  : <ArrowDown className="w-3.5 h-3.5" />
                               )}
                               {formatPercent(p.marketSimpleReturn)}
                             </div>
@@ -456,16 +452,16 @@ export default function Home() {
                               <td
                                 key={f.slug}
                                 className={cn(
-                                  "px-3 py-3 text-left font-mono text-xs whitespace-nowrap border-l border-slate-200 last:border-l-0",
+                                  "px-3 py-3 text-center font-mono text-sm whitespace-nowrap border-l border-slate-200 last:border-l-0 font-bold",
                                   returnBgClass(v),
                                   returnColorClass(v),
                                 )}
                               >
-                                <div className="flex items-center justify-end gap-1">
+                                <div className="flex items-center justify-center gap-1">
                                   {v != null && v !== 0 && (
                                     v > 0
-                                      ? <ArrowUp className="w-3 h-3" />
-                                      : <ArrowDown className="w-3 h-3" />
+                                      ? <ArrowUp className="w-3.5 h-3.5" />
+                                      : <ArrowDown className="w-3.5 h-3.5" />
                                   )}
                                   {formatPercent(v)}
                                 </div>
@@ -476,20 +472,20 @@ export default function Home() {
                       ))}
 
                       {/* NAV row */}
-                      <tr className="bg-slate-100/60 font-medium">
-                        <td className="px-4 py-3 text-slate-900 whitespace-nowrap border-l border-slate-200">
+                      <tr className="bg-slate-100/60 font-bold">
+                        <td className="px-4 py-3 text-slate-900 whitespace-nowrap border-l border-slate-200 text-center">
                           خالص ارزش دارایی (NAV)
                         </td>
-                        <td className="px-3 py-3 text-xs text-slate-400 whitespace-nowrap border-l border-slate-200">
+                        <td className="px-3 py-3 text-xs text-slate-400 whitespace-nowrap border-l border-slate-200 text-center">
                           —
                         </td>
-                        <td className="px-3 py-3 text-left font-mono text-xs whitespace-nowrap border-l border-slate-200 text-slate-400">
+                        <td className="px-3 py-3 text-center font-mono text-xs whitespace-nowrap border-l border-slate-200 text-slate-400">
                           —
                         </td>
                         {data?.funds.map((f) => (
                           <td
                             key={f.slug}
-                            className="px-3 py-3 text-left font-mono text-xs whitespace-nowrap border-l border-slate-200 last:border-l-0 text-slate-700"
+                            className="px-3 py-3 text-center font-mono text-xs whitespace-nowrap border-l border-slate-200 last:border-l-0 text-slate-900"
                           >
                             {formatToman(f.nav)}
                           </td>
@@ -509,7 +505,7 @@ export default function Home() {
             <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
             <div className="text-xs text-slate-600 space-y-1">
               <p>
-                <strong className="text-slate-800">نحوه کار:</strong> فایل <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">auto_data.json</code> به‌صورت خودکار توسط GitHub Actions هر روز ساعت ۱۲:۰۰ به‌وقت تهران به‌روزرسانی می‌شود.
+                <strong className="text-slate-800">نحوه کار:</strong> فایل <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">auto_data.json</code> به‌صورت خودکار توسط GitHub Actions هر روز ساعت ۱۲:۳۰ به‌وقت تهران به‌روزرسانی می‌شود.
               </p>
               <p>
                 فایل <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">manual_data.json</code> شامل صندوق‌های دارای محدودیت شبکه است و به‌صورت دستی بارگذاری می‌شود.
