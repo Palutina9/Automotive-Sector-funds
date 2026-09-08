@@ -56,25 +56,24 @@ const PERIOD_KEYS = [
 ] as const;
 
 const PERIOD_LABELS_FA: Record<string, string> = {
-  SIMPLE_WEEKLY: "بازدهی هفتگی",
-  SIMPLE_MONTHLY: "بازدهی یک‌ماهه",
-  SIMPLE_MONTHLY3: "بازدهی سه‌ماهه",
-  SIMPLE_MONTHLY6: "بازدهی شش‌ماهه",
+  SIMPLE_WEEKLY: "بازدهی 7 روز گذشته",
+  SIMPLE_MONTHLY: "بازدهی 30 روز گذشته",
+  SIMPLE_MONTHLY3: "بازدهی 90 روز گذشته",
+  SIMPLE_MONTHLY6: "بازدهی 180 روز گذشته",
   SIMPLE_YEARLY: "بازدهی یک‌ساله",
-  SIMPLE_ALL_DAYS: "بازدهی کل دوران",
-  MAX_SIMPLE_WEEKLY: "بیشترین بازدهی هفتگی",
-  MIN_SIMPLE_WEEKLY: "کمترین بازدهی هفتگی",
+  SIMPLE_ALL_DAYS: "بازدهی از شروع فعالیت",
+  MAX_SIMPLE_WEEKLY: "بیشترین بازدهی هفتگی از زمان تاسیس",
+  MIN_SIMPLE_WEEKLY: "کمترین بازدهی هفتگی از زمان تاسیس",
 };
 
 // Persian display names for funds. Slug = JSON key prefix (before `_`).
 const FUND_NAMES_FA: Record<string, string> = {
   Khodran: "خودران",
   TakhtGaz: "تخت‌گاز",
-  Kiano: "کیانو",
-  Asemooni: "آسمانی",
-  Maadiran: "مادیران",
-  Torange: "Torange", // replace with Persian when known
-  AutoAgah: "آوتوآگاه",
+  AutoCar: "اتوکار",
+  AutoAgah: "اتوآگاه",
+  AutoDariush: "اتوداریوش",
+  BehinRo: "بهین‌رو"
 };
 
 // Manual funds (geo-blocked, scraped manually and stored in manual_data.json).
