@@ -53,57 +53,6 @@ def safe_post(url, **kwargs):
 
 jadval = []
 
-# ---------- Market data (from Agah's periodic endpoint) ----------
-api_periodic = "https://agahsectorfund.ir/api/v1/public/fundReturnPeriodic/2"
-api_daily = "https://agahsectorfund.ir/api/v1/public/fundReturnDaily/2"
-
-response = safe_get(api_periodic)
-if response is not None:
-    data = response.json()
-    rows = data['rows'][:8]
-    for row in rows:
-        jadval.append({
-            "key": row['key'],
-            "fromDate": row['fromDate'],
-            "toDate": row['toDate'],
-            "marketSimpleReturn": row['marketSimpleReturn']
-        })
-
-    roozaneh = safe_get(api_daily)
-    if roozaneh is not None:
-        data_daily = roozaneh.json()[0]
-        jadval.append({"marketDailyReturn": data_daily['marketDailyReturn']})
-    else:
-        print("Skipping market daily return — site unreachable")
-else:
-    print("Skipping market data entirely — site unreachable")
-
-# ---------- Agah / Dariush style (JSON API) ----------
-def apietelaat(name, api_periodic, api_daily, navapi):
-    response = safe_get(api_periodic)
-    if response is None:
-        print(f"Skipping {name} periodic data — site unreachable")
-        return
-
-    data = response.json()
-    rows = data['rows'][:8]
-    for row in rows:
-        jadval.append({name + "_fundSimpleReturn": row['fundSimpleReturn']})
-
-    roozaneh = safe_get(api_daily)
-    if roozaneh is not None:
-        data_daily = roozaneh.json()[0]
-        jadval.append({name + "_fundDailyReturn": data_daily['fundDailyReturn']})
-    else:
-        print(f"Skipping {name} daily return — site unreachable")
-
-    navnum = safe_get(navapi)
-    if navnum is not None:
-        jadval.append({name + "_fundNAV": fa_to_float(navnum.json()['nav'])})
-    else:
-        print(f"Skipping {name} NAV — site unreachable")
-
-
 def ajaxetelaat(name, link, payload, navapi):
     resp = safe_post(link, data=payload)
     if resp is None:
@@ -131,18 +80,6 @@ def ajaxetelaat(name, link, payload, navapi):
     else:
         print(f"Skipping {name} NAV — site unreachable")
 
-# ---------- Run all three ----------
-#AutoAgah
-name = "AutoAgah"
-navapi = "https://agahsectorfund.ir/api/v1/public/fundNavInfo/2"
-apietelaat(name, api_periodic, api_daily, navapi)
-
-#AutoDariush
-name = "AutoDariush"
-api_periodic = "https://sector.dariush.fund/api/v1/public/fundReturnPeriodic/2"
-api_daily = "https://sector.dariush.fund/api/v1/public/fundReturnDaily/2"
-navapi = "https://sector.dariush.fund/api/v1/public/fundNavInfo/2"
-apietelaat(name, api_periodic, api_daily, navapi)
 
 #Khodran
 name = "Khodran"
@@ -162,13 +99,6 @@ payload = {
     }
 ajaxetelaat(name, link, payload, navapi)
 
-#BehinRo
-name = "BehinRo"
-api_periodic = "https://vistasectorfund.ir/api/v1/public/fundReturnPeriodic/1"
-api_daily = "https://vistasectorfund.ir/api/v1/public/fundReturnDaily/1"
-navapi = "https://vistasectorfund.ir/api/v1/public/fundNavInfo/1"
-apietelaat(name, api_periodic, api_daily, navapi)
-
 #AutoCar
 name = "AutoCar"
 link = "https://karamadsectorfund.ir/Reports/FundEfficiencyForDifferentPeriods"
@@ -179,7 +109,7 @@ payload = {
 ajaxetelaat(name, link, payload, navapi)
 
 # ---------- Save results ----------
-with open("data.json", "w", encoding="utf-8") as f:
+with open("auto_data.json", "w", encoding="utf-8") as f:
     json.dump(jadval, f, ensure_ascii=False, indent=2)
 
 print(jadval)
