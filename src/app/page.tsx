@@ -1,0 +1,569 @@
+"use client";
+
+import * as React from "react";
+import * as XLSX from "xlsx";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  Building2,
+  Calendar,
+  Clock,
+  Database,
+  Download,
+  Info,
+  Layers,
+  RefreshCw,
+  TrendingUp,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Toaster } from "@/components/ui/toaster";
+import { toast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
+import {
+  loadDashboardData,
+  type DashboardData,
+} from "@/lib/dashboard-data";
+
+// ---------------------------------------------------------------------------
+// Number / date formatting helpers (Persian locale).
+// ---------------------------------------------------------------------------
+
+function formatPercent(n: number | null | undefined): string {
+  if (n == null || !isFinite(n)) return "—";
+  // Show 2 decimals, trailing % sign. Use Persian digits for visual consistency.
+  const s = n.toLocaleString("fa-IR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${s}٪`;
+}
+
+function formatToman(n: number | null | undefined): string {
+  if (n == null || !isFinite(n)) return "—";
+  // Convert to میلیارد تومان (billion tomans) for readability.
+  const billions = n / 1e9;
+  if (billions >= 1) {
+    return `${billions.toLocaleString("fa-IR", { maximumFractionDigits: 1 })} میلیارد ت`;
+  }
+  return `${n.toLocaleString("fa-IR")} ت`;
+}
+
+function formatDateTime(iso: string | null): string {
+  if (!iso) return "—";
+  try {
+    const d = new Date(iso);
+    return new Intl.DateTimeFormat("fa-IR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    }).format(d);
+  } catch {
+    return iso;
+  }
+}
+
+function relativeTime(iso: string | null): string {
+  if (!iso) return "هرگز";
+  const diff = Date.now() - new Date(iso).getTime();
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return "لحظاتی پیش";
+  if (sec < 3600) return `${Math.floor(sec / 60)} دقیقه پیش`;
+  if (sec < 86400) return `${Math.floor(sec / 3600)} ساعت پیش`;
+  return `${Math.floor(sec / 86400)} روز پیش`;
+}
+
+// Convert ASCII digits in a string to Persian digits.
+function toFaDigits(s: string): string {
+  return s.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
+}
+
+// ---------------------------------------------------------------------------
+// Color coding for returns.
+// ---------------------------------------------------------------------------
+
+function returnColorClass(n: number | null | undefined): string {
+  if (n == null || !isFinite(n) || n === 0) return "text-slate-500";
+  return n > 0 ? "text-emerald-600" : "text-red-600";
+}
+
+function returnBgClass(n: number | null | undefined): string {
+  if (n == null || !isFinite(n) || n === 0) return "bg-slate-50";
+  return n > 0 ? "bg-emerald-50" : "bg-red-50";
+}
+
+// ---------------------------------------------------------------------------
+// Main page.
+// ---------------------------------------------------------------------------
+
+export default function Home() {
+  const [data, setData] = React.useState<DashboardData | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [refreshing, setRefreshing] = React.useState(false);
+
+  const refresh = React.useCallback(async (silent = false) => {
+    if (!silent) setRefreshing(true);
+    try {
+      const d = await loadDashboardData();
+      setData(d);
+      if (d.loadError && !silent) {
+        toast({
+          title: "خطا در بارگذاری داده‌ها",
+          description: d.loadError,
+          variant: "destructive",
+        });
+      }
+    } catch (e) {
+      if (!silent) {
+        toast({
+          title: "خطا",
+          description: e instanceof Error ? e.message : String(e),
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    refresh();
+    // Auto-refresh every 5 minutes so daily updates appear without reload.
+    const t = setInterval(() => refresh(true), 5 * 60_000);
+    return () => clearInterval(t);
+  }, [refresh]);
+
+  const exportExcel = React.useCallback(() => {
+    if (!data) return;
+    // Build pivot rows: period | fromDate | toDate | market | fund1 | fund2 | ...
+    const headers = [
+      "دوره",
+      "از تاریخ",
+      "تا تاریخ",
+      "بازار",
+      ...data.funds.map((f) => f.nameFa),
+    ];
+    const rows: (string | number)[][] = data.periods.map((p, i) => [
+      p.labelFa,
+      p.fromDate,
+      p.toDate,
+      p.marketSimpleReturn ?? "",
+      ...data.funds.map((f) => f.simpleReturns[i] ?? ""),
+    ]);
+    // Add daily return row.
+    rows.push([
+      "بازدهی روزانه",
+      "—",
+      "—",
+      data.marketDailyReturn ?? "",
+      ...data.funds.map((f) => f.dailyReturn ?? ""),
+    ]);
+    // Add NAV row.
+    rows.push([
+      "NAV (تومان)",
+      "—",
+      "—",
+      "—",
+      ...data.funds.map((f) => f.nav ?? ""),
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    // Make the first column wider.
+    ws["!cols"] = [{ wch: 22 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+    for (let i = 0; i < data.funds.length; i++) ws["!cols"]?.push({ wch: 14 });
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "بازدهی صندوق‌ها");
+
+    const stamp = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `fund-returns-${stamp}.xlsx`);
+    toast({ title: "فایل اکسل دانلود شد", description: `fund-returns-${stamp}.xlsx` });
+  }, [data]);
+
+  // --- Derived display state. ---
+  const totalFunds = data?.fundsCount ?? 0;
+  const totalNav = data?.totalNav ?? 0;
+  const avgDailyReturn = React.useMemo(() => {
+    if (!data) return null;
+    const vals = data.funds
+      .map((f) => f.dailyReturn)
+      .filter((v): v is number => v != null && isFinite(v));
+    if (vals.length === 0) return null;
+    return vals.reduce((s, v) => s + v, 0) / vals.length;
+  }, [data]);
+
+  const bestPerformer = React.useMemo(() => {
+    if (!data || data.funds.length === 0) return null;
+    // Use yearly return (index 4) as the "performer" metric.
+    let best: { name: string; value: number } | null = null;
+    for (const f of data.funds) {
+      const v = f.simpleReturns[4];
+      if (v != null && isFinite(v) && (best === null || v > best.value)) {
+        best = { name: f.nameFa, value: v };
+      }
+    }
+    return best;
+  }, [data]);
+
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50">
+      {/* Header */}
+      <header className="border-b border-slate-200 bg-white sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-wrap items-center gap-3 justify-between">
+          <div className="flex items-center gap-3">
+            <div
+              className="w-10 h-10 rounded-lg flex items-center justify-center text-white shadow-sm"
+              style={{ backgroundColor: "#2563eb" }}
+            >
+              <TrendingUp className="w-5 h-5" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold leading-tight">
+                داشبورد بازدهی صندوق‌ها
+              </h1>
+              <p className="text-xs text-slate-500 leading-tight">
+                مقایسه بازدهی صندوق‌های سرمایه‌گذاری — به‌روزرسانی روزانه
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="outline"
+              className="border-slate-200 text-slate-600 gap-1.5"
+            >
+              <Clock className="w-3 h-3" />
+              {loading
+                ? "در حال بارگذاری…"
+                : `به‌روزرسانی: ${relativeTime(data?.fetchedAt ?? null)}`}
+            </Badge>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refresh()}
+              disabled={refreshing}
+            >
+              <RefreshCw className={cn("w-4 h-4 ml-1.5", refreshing && "animate-spin")} />
+              به‌روزرسانی
+            </Button>
+            <Button
+              size="sm"
+              onClick={exportExcel}
+              disabled={!data}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Download className="w-4 h-4 ml-1.5" />
+              خروجی اکسل
+            </Button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+        {/* Error banner */}
+        {data?.loadError && !loading && (
+          <Card className="border-amber-200 bg-amber-50">
+            <CardContent className="p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-900">برخی فایل‌ها بارگذاری نشدند</p>
+                <p className="text-amber-700 mt-1 font-mono text-xs">{data.loadError}</p>
+                <p className="text-amber-700 mt-2 text-xs">
+                  مطمئن شوید که فایل‌های <code>auto_data.json</code> و <code>manual_data.json</code> در پوشه <code>public/</code> قرار دارند.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* KPI cards */}
+        <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <KpiCard
+            icon={Building2}
+            label="تعداد صندوق‌ها"
+            value={loading ? null : toFaDigits(String(totalFunds))}
+            accent="#2563eb"
+          />
+          <KpiCard
+            icon={Database}
+            label="مجموع دارایی (NAV)"
+            value={loading ? null : formatToman(totalNav)}
+            subValue="مجموع خالص ارزش دارایی‌ها"
+            accent="#16a34a"
+          />
+          <KpiCard
+            icon={Activity}
+            label="میانگین بازدهی روزانه"
+            value={loading ? null : formatPercent(avgDailyReturn)}
+            subValue={loading ? null : "میانگین همه صندوق‌ها"}
+            accent={avgDailyReturn != null && avgDailyReturn < 0 ? "#dc2626" : "#16a34a"}
+          />
+          <KpiCard
+            icon={TrendingUp}
+            label="بهترین بازدهی یک‌ساله"
+            value={loading ? null : (bestPerformer ? formatPercent(bestPerformer.value) : "—")}
+            subValue={loading ? null : (bestPerformer ? bestPerformer.name : "—")}
+            accent="#9333ea"
+          />
+        </section>
+
+        {/* Pivot table */}
+        <Card className="shadow-sm border-slate-200">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Layers className="w-4 h-4 text-blue-600" />
+              جدول مقایسه بازدهی صندوق‌ها
+            </CardTitle>
+            <CardDescription>
+              بازدهی ساده به درصد — دوره‌های زمانی مختلف در سطرها، هر صندوق در یک ستون
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm border-collapse">
+                <thead className="sticky top-0 bg-slate-50 border-b border-slate-200">
+                  <tr className="text-slate-700">
+                    <th className="px-4 py-3 text-right font-semibold whitespace-nowrap border-l border-slate-200">
+                      دوره
+                    </th>
+                    <th className="px-3 py-3 text-right font-semibold whitespace-nowrap border-l border-slate-200">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        بازه زمانی
+                      </div>
+                    </th>
+                    <th className="px-3 py-3 text-left font-semibold whitespace-nowrap border-l border-slate-200 bg-blue-50/50">
+                      بازار
+                      <div className="text-[10px] font-normal text-slate-400 mt-0.5">شاخص کل</div>
+                    </th>
+                    {data?.funds.map((f) => (
+                      <th
+                        key={f.slug}
+                        className="px-3 py-3 text-left font-semibold whitespace-nowrap border-l border-slate-200 last:border-l-0"
+                      >
+                        <div className="flex items-center gap-1.5 justify-end">
+                          {f.manual && (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] px-1 py-0 h-4 border-amber-300 text-amber-700 bg-amber-50"
+                            >
+                              دستی
+                            </Badge>
+                          )}
+                          <span>{f.nameFa}</span>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {loading ? (
+                    Array.from({ length: 9 }).map((_, i) => (
+                      <tr key={i} className="border-b border-slate-100">
+                        <td colSpan={3 + (data?.funds.length ?? 6)} className="px-4 py-3">
+                          <Skeleton className="h-5 w-full" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <>
+                      {/* Period rows */}
+                      {data?.periods.map((p, i) => (
+                        <tr
+                          key={p.key}
+                          className="border-b border-slate-100 hover:bg-slate-50/70 transition"
+                        >
+                          <td className="px-4 py-3 font-medium text-slate-900 whitespace-nowrap border-l border-slate-200">
+                            {p.labelFa}
+                          </td>
+                          <td className="px-3 py-3 text-xs text-slate-500 whitespace-nowrap border-l border-slate-200 font-mono">
+                            <div>{toFaDigits(p.fromDate)}</div>
+                            <div className="text-slate-400">تا {toFaDigits(p.toDate)}</div>
+                          </td>
+                          <td className={cn(
+                            "px-3 py-3 text-left font-mono text-xs whitespace-nowrap border-l border-slate-200 bg-blue-50/30",
+                            returnColorClass(p.marketSimpleReturn),
+                          )}>
+                            <div className="flex items-center justify-end gap-1">
+                              {p.marketSimpleReturn != null && p.marketSimpleReturn !== 0 && (
+                                p.marketSimpleReturn > 0
+                                  ? <ArrowUp className="w-3 h-3" />
+                                  : <ArrowDown className="w-3 h-3" />
+                              )}
+                              {formatPercent(p.marketSimpleReturn)}
+                            </div>
+                          </td>
+                          {data.funds.map((f) => {
+                            const v = f.simpleReturns[i];
+                            return (
+                              <td
+                                key={f.slug}
+                                className={cn(
+                                  "px-3 py-3 text-left font-mono text-xs whitespace-nowrap border-l border-slate-200 last:border-l-0",
+                                  returnBgClass(v),
+                                  returnColorClass(v),
+                                )}
+                              >
+                                <div className="flex items-center justify-end gap-1">
+                                  {v != null && v !== 0 && (
+                                    v > 0
+                                      ? <ArrowUp className="w-3 h-3" />
+                                      : <ArrowDown className="w-3 h-3" />
+                                  )}
+                                  {formatPercent(v)}
+                                </div>
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      ))}
+
+                      {/* Daily return row */}
+                      <tr className="border-b border-slate-100 bg-slate-50/50 font-medium">
+                        <td className="px-4 py-3 text-slate-900 whitespace-nowrap border-l border-slate-200">
+                          بازدهی روزانه
+                        </td>
+                        <td className="px-3 py-3 text-xs text-slate-400 whitespace-nowrap border-l border-slate-200">
+                          —
+                        </td>
+                        <td className={cn(
+                          "px-3 py-3 text-left font-mono text-xs whitespace-nowrap border-l border-slate-200 bg-blue-50/50",
+                          returnColorClass(data?.marketDailyReturn),
+                        )}>
+                          {formatPercent(data?.marketDailyReturn)}
+                        </td>
+                        {data?.funds.map((f) => (
+                          <td
+                            key={f.slug}
+                            className={cn(
+                              "px-3 py-3 text-left font-mono text-xs whitespace-nowrap border-l border-slate-200 last:border-l-0",
+                              returnBgClass(f.dailyReturn),
+                              returnColorClass(f.dailyReturn),
+                            )}
+                          >
+                            {formatPercent(f.dailyReturn)}
+                          </td>
+                        ))}
+                      </tr>
+
+                      {/* NAV row */}
+                      <tr className="bg-slate-100/60 font-medium">
+                        <td className="px-4 py-3 text-slate-900 whitespace-nowrap border-l border-slate-200">
+                          خالص ارزش دارایی (NAV)
+                        </td>
+                        <td className="px-3 py-3 text-xs text-slate-400 whitespace-nowrap border-l border-slate-200">
+                          —
+                        </td>
+                        <td className="px-3 py-3 text-left font-mono text-xs whitespace-nowrap border-l border-slate-200 text-slate-400">
+                          —
+                        </td>
+                        {data?.funds.map((f) => (
+                          <td
+                            key={f.slug}
+                            className="px-3 py-3 text-left font-mono text-xs whitespace-nowrap border-l border-slate-200 last:border-l-0 text-slate-700"
+                          >
+                            {formatToman(f.nav)}
+                          </td>
+                        ))}
+                      </tr>
+                    </>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Info / help */}
+        <Card className="border-slate-200 bg-white">
+          <CardContent className="p-4 flex items-start gap-3">
+            <Info className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-slate-600 space-y-1">
+              <p>
+                <strong className="text-slate-800">نحوه کار:</strong> فایل <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">auto_data.json</code> به‌صورت خودکار توسط GitHub Actions هر روز ساعت ۱۲:۰۰ به‌وقت تهران به‌روزرسانی می‌شود.
+              </p>
+              <p>
+                فایل <code className="font-mono bg-slate-100 px-1 py-0.5 rounded">manual_data.json</code> شامل صندوق‌های دارای محدودیت شبکه است و به‌صورت دستی بارگذاری می‌شود.
+              </p>
+              <p>
+                صندوق‌های دارای برچسب <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-amber-300 text-amber-700 bg-amber-50 mx-1">دستی</Badge> به‌صورت دستی جمع‌آوری شده‌اند.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+
+      <footer className="border-t border-slate-200 mt-auto bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-xs text-slate-500 flex flex-wrap items-center justify-between gap-2">
+          <span>
+            میزبانی روی GitHub Pages — داده‌ها روزانه به‌روزرسانی می‌شوند
+          </span>
+          <span>
+            {data && `آخرین بارگذاری: ${formatDateTime(data.fetchedAt)}`}
+          </span>
+        </div>
+      </footer>
+      <Toaster />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Small subcomponents.
+// ---------------------------------------------------------------------------
+
+function KpiCard({
+  icon: Icon,
+  label,
+  value,
+  subValue,
+  accent,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string | number | null;
+  subValue?: string | null;
+  accent: string;
+}) {
+  return (
+    <Card className="shadow-sm border-slate-200">
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-slate-500">{label}</p>
+            {value === null ? (
+              <Skeleton className="h-7 w-24 mt-1.5" />
+            ) : (
+              <p className="text-xl font-bold mt-1 truncate" title={String(value)}>
+                {value}
+              </p>
+            )}
+            {subValue ? (
+              <p className="text-[10px] text-slate-400 mt-0.5 truncate" title={subValue}>
+                {subValue}
+              </p>
+            ) : null}
+          </div>
+          <div
+            className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: accent + "15", color: accent }}
+          >
+            <Icon className="w-5 h-5" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
