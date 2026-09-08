@@ -7,8 +7,8 @@ name: Daily Fund Scrape
 
 on:
   schedule:
-    # 08:30 UTC = 12:00 Asia/Tehran
-    - cron: '30 8 * * *'
+    # 00:09 UTC = 12:00 Asia/Tehran
+    - cron: '00 9 * * *'
   workflow_dispatch: {}  # lets you trigger it manually from the Actions tab
 
 # Permissions needed to commit back to the repo.
@@ -37,7 +37,7 @@ jobs:
           pip install -r scraper/requirements.txt
 
       - name: Run scraper
-        run: python scraper/scraper.py
+        run: python AutoCar.py
         env:
           # Path the scraper writes to (relative to repo root).
           OUTPUT_PATH: public/auto_data.json
