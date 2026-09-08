@@ -379,6 +379,51 @@ export default function Home() {
                     ))
                   ) : (
                     <>
+                      {/* Daily return row — at the top */}
+                      <tr className="border-b-2 border-blue-200 bg-blue-50/40 font-bold">
+                        <td className="px-4 py-3 text-slate-900 whitespace-nowrap border-l border-slate-200">
+                          بازدهی روزانه
+                          <div className="text-[10px] font-normal text-slate-500 mt-0.5">
+                            {new Date().toLocaleDateString("fa-IR")}
+                          </div>
+                        </td>
+                        <td className="px-3 py-3 text-xs text-slate-500 whitespace-nowrap border-l border-slate-200 font-mono">
+                          {new Date().toLocaleDateString("fa-IR")}
+                        </td>
+                        <td className={cn(
+                          "px-3 py-3 text-center font-mono text-sm whitespace-nowrap border-l border-slate-200 bg-blue-50/60",
+                          returnColorClass(data?.marketDailyReturn),
+                        )}>
+                          <div className="flex items-center justify-center gap-1">
+                            {data?.marketDailyReturn != null && data.marketDailyReturn !== 0 && (
+                              data.marketDailyReturn > 0
+                                ? <ArrowUp className="w-3.5 h-3.5" />
+                                : <ArrowDown className="w-3.5 h-3.5" />
+                            )}
+                            {formatPercent(data?.marketDailyReturn)}
+                          </div>
+                        </td>
+                        {data?.funds.map((f) => (
+                          <td
+                            key={f.slug}
+                            className={cn(
+                              "px-3 py-3 text-center font-mono text-sm whitespace-nowrap border-l border-slate-200 last:border-l-0",
+                              returnBgClass(f.dailyReturn),
+                              returnColorClass(f.dailyReturn),
+                            )}
+                          >
+                            <div className="flex items-center justify-center gap-1">
+                              {f.dailyReturn != null && f.dailyReturn !== 0 && (
+                                f.dailyReturn > 0
+                                  ? <ArrowUp className="w-3.5 h-3.5" />
+                                  : <ArrowDown className="w-3.5 h-3.5" />
+                              )}
+                              {formatPercent(f.dailyReturn)}
+                            </div>
+                          </td>
+                        ))}
+                      </tr>
+
                       {/* Period rows */}
                       {data?.periods.map((p, i) => (
                         <tr
@@ -429,34 +474,6 @@ export default function Home() {
                           })}
                         </tr>
                       ))}
-
-                      {/* Daily return row */}
-                      <tr className="border-b border-slate-100 bg-slate-50/50 font-medium">
-                        <td className="px-4 py-3 text-slate-900 whitespace-nowrap border-l border-slate-200">
-                          بازدهی روزانه
-                        </td>
-                        <td className="px-3 py-3 text-xs text-slate-400 whitespace-nowrap border-l border-slate-200">
-                          —
-                        </td>
-                        <td className={cn(
-                          "px-3 py-3 text-left font-mono text-xs whitespace-nowrap border-l border-slate-200 bg-blue-50/50",
-                          returnColorClass(data?.marketDailyReturn),
-                        )}>
-                          {formatPercent(data?.marketDailyReturn)}
-                        </td>
-                        {data?.funds.map((f) => (
-                          <td
-                            key={f.slug}
-                            className={cn(
-                              "px-3 py-3 text-left font-mono text-xs whitespace-nowrap border-l border-slate-200 last:border-l-0",
-                              returnBgClass(f.dailyReturn),
-                              returnColorClass(f.dailyReturn),
-                            )}
-                          >
-                            {formatPercent(f.dailyReturn)}
-                          </td>
-                        ))}
-                      </tr>
 
                       {/* NAV row */}
                       <tr className="bg-slate-100/60 font-medium">
