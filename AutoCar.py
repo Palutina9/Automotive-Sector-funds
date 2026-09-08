@@ -43,12 +43,12 @@ api_periodic = "https://agahsectorfund.ir/api/v1/public/fundReturnPeriodic/2"
 api_daily = "https://agahsectorfund.ir/api/v1/public/fundReturnDaily/2"
 
 # fixed section
-response = requests.get(api_periodic, timeout = 10)
+response = safe_get(api_periodic, timeout = 10)
 response.raise_for_status()
 data = response.json()
 rows = data['rows'][:8]
 
-roozaneh = requests.get(api_daily, timeout = 10)
+roozaneh = safe_get(api_daily, timeout = 10)
 roozaneh.raise_for_status()
 data_daily = roozaneh.json()[0]
 
