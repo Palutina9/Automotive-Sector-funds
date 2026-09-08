@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  BarChart3,
   Building2,
   Calendar,
   Clock,
@@ -30,6 +31,24 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Toaster } from "@/components/ui/toaster";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
+import {
+  Bar,
+  CartesianGrid,
+  Cell,
+  ComposedChart,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   loadDashboardData,
   type DashboardData,
@@ -109,6 +128,43 @@ export default function Home() {
   const [loading, setLoading] = React.useState(true);
   const [refreshing, setRefreshing] = React.useState(false);
 
+  // Chart state — which period to compare.
+  const [selectedPeriod, setSelectedPeriod] = React.useState<string>("4"); // 4 = yearly
+
+  const PERIOD_OPTIONS = [
+    { value: "0", label: "بازدهی هفتگی" },
+    { value: "1", label: "بازدهی یک‌ماهه" },
+    { value: "2", label: "بازدهی سه‌ماهه" },
+    { value: "3", label: "بازدهی شش‌ماهه" },
+    { value: "4", label: "بازدهی یک‌ساله" },
+    { value: "5", label: "بازدهی کل دوران" },
+    { value: "6", label: "بیشترین بازدهی هفتگی" },
+    { value: "7", label: "کمترین بازدهی هفتگی" },
+    { value: "daily", label: "بازدهی روزانه" },
+  ];
+
+  const chartData = React.useMemo(() => {
+    if (!data) return [];
+    return data.funds.map((f) => {
+      let ret: number | null = null;
+      if (selectedPeriod === "daily") {
+        ret = f.dailyReturn;
+      } else {
+        const idx = parseInt(selectedPeriod, 10);
+        if (!isNaN(idx) && idx >= 0 && idx < f.simpleReturns.length) {
+          ret = f.simpleReturns[idx];
+        }
+      }
+      return {
+        name: f.nameFa,
+        nav: f.nav ?? 0,
+        return: ret,
+      };
+    });
+  }, [data, selectedPeriod]);
+
+  const selectedPeriodLabel =
+    PERIOD_OPTIONS.find((p) => p.value === selectedPeriod)?.label ?? "";
   const refresh = React.useCallback(async (silent = false) => {
     if (!silent) setRefreshing(true);
     try {
@@ -314,6 +370,94 @@ export default function Home() {
             accent="#9333ea"
           />
         </section>
+        {/* Comparison chart */}
+        <Card className="shadow-sm border-amber-200 bg-gradient-to-b from-amber-50/40 to-white">
+          <CardHeader className="pb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <BarChart3 className="w-4 h-4 text-amber-600" />
+                  مقایسه صندوق‌ها
+                </CardTitle>
+                <CardDescription className="mt-1">
+                  میله‌ها: NAV (میلیارد تومان) — خط: بازدهی دوره انتخاب‌شده (٪)
+                </CardDescription>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-600 font-medium">دوره:</label>
+                <Select value={selectedPeriod} onValueChange={setSelectedPeriod}>
+                  <SelectTrigger className="w-[180px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PERIOD_OPTIONS.map((p) => (
+                      <SelectItem key={p.value} value={p.value}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <Skeleton className="h-[400px] w-full" />
+            ) : chartData.length === 0 ? (
+              <div className="h-[400px] flex items-center justify-center text-slate-400">
+                داده‌ای برای نمایش وجود ندارد
+              </div>
+            ) : (
+              <div className="h-[400px] w-full" dir="ltr">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ComposedChart data={chartData} margin={{ top: 20, right: 20, left: 10, bottom: 70 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#fef3c7" />
+                    <XAxis
+                      dataKey="name"
+                      tick={{ fontSize: 12, fill: "#78350f" }}
+                      angle={-25}
+                      textAnchor="end"
+                      height={70}
+                    />
+                    <YAxis
+                      yAxisId="nav"
+                      orientation="left"
+                      tick={{ fontSize: 11, fill: "#92400e" }}
+                      tickFormatter={(v) =>
+                        `${(v / 1e9).toLocaleString("fa-IR", { maximumFractionDigits: 0 })}`
+                      }
+                    />
+                    <YAxis
+                      yAxisId="return"
+                      orientation="right"
+                      tick={{ fontSize: 11, fill: "#7c2d12" }}
+                      tickFormatter={(v) =>
+                        `${v.toLocaleString("fa-IR", { maximumFractionDigits: 0 })}٪`
+                      }
+                    />
+                    <Tooltip content={<CustomTooltip periodLabel={selectedPeriodLabel} />} />
+                    <Bar yAxisId="nav" dataKey="nav" name="NAV" radius={[6, 6, 0, 0]}>
+                      {chartData.map((entry, idx) => (
+                        <Cell key={idx} fill="#f59e0b" />
+                      ))}
+                    </Bar>
+                    <Line
+                      yAxisId="return"
+                      type="monotone"
+                      dataKey="return"
+                      name={selectedPeriodLabel}
+                      stroke="#dc2626"
+                      strokeWidth={2.5}
+                      dot={<CustomDot />}
+                      activeDot={{ r: 7, fill: "#dc2626" }}
+                      connectNulls
+                    />
+                  </ComposedChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Pivot table */}
         <Card className="shadow-sm border-slate-200">
@@ -529,6 +673,83 @@ export default function Home() {
         </div>
       </footer>
       <Toaster />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Chart helpers.
+// ---------------------------------------------------------------------------
+
+function CustomDot(props: any) {
+  const { cx, cy, payload } = props;
+  if (cx == null || cy == null) return null;
+  const v = payload?.return;
+  // Warm palette: orange for positive, dark red for negative, amber for zero/null.
+  const fill =
+    v != null && v > 0
+      ? "#ea580c"
+      : v != null && v < 0
+      ? "#b91c1c"
+      : "#92400e";
+  return <circle cx={cx} cy={cy} r={5} fill={fill} stroke="white" strokeWidth={1.5} />;
+}
+
+function CustomTooltip({
+  active,
+  payload,
+  label,
+  periodLabel,
+}: {
+  active?: boolean;
+  payload?: Array<{ dataKey: string; value: number | null }>;
+  label?: string;
+  periodLabel?: string;
+}) {
+  if (!active || !payload || payload.length === 0) return null;
+  const navEntry = payload.find((p) => p.dataKey === "nav");
+  const retEntry = payload.find((p) => p.dataKey === "return");
+  const nav = navEntry?.value;
+  const ret = retEntry?.value;
+
+  return (
+    <div
+      className="bg-white border border-amber-200 rounded-lg shadow-lg p-3 text-xs space-y-1.5"
+      dir="rtl"
+    >
+      <p className="font-bold text-slate-900 text-sm border-b border-amber-100 pb-1.5 mb-1">
+        {label}
+      </p>
+      {nav != null && (
+        <div className="flex items-center justify-between gap-6">
+          <span className="text-amber-700">NAV (تومان):</span>
+          <span className="font-mono font-bold text-slate-900">
+            {nav.toLocaleString("fa-IR")}
+          </span>
+        </div>
+      )}
+      {ret != null && (
+        <div className="flex items-center justify-between gap-6">
+          <span className="text-red-700">{periodLabel || "بازدهی"}:</span>
+          <span
+            className={cn(
+              "font-mono font-bold",
+              ret > 0
+                ? "text-emerald-600"
+                : ret < 0
+                ? "text-red-600"
+                : "text-slate-500"
+            )}
+          >
+            {ret > 0 ? "+" : ""}
+            {ret.toLocaleString("fa-IR", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+            ٪
+          </span>
+        </div>
+      )}
     </div>
   );
 }
