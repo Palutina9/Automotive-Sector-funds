@@ -2,19 +2,17 @@ name: Daily Fund Scrape
 
 on:
   schedule:
-    - cron: '00 9 * * *'
-  workflow_dispatch: {}
-
-permissions:
-  contents: write
+    - cron: '00 9 * * *'   # runs daily at 05:30 UTC — adjust for your local time
+  workflow_dispatch:        # lets you trigger it manually too, for testing
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    permissions:
+      contents: write        # needed so the workflow can commit data.json back
 
     steps:
-      - name: Checkout repo
+      - name: Check out repo
         uses: actions/checkout@v4
 
       - name: Set up Python
