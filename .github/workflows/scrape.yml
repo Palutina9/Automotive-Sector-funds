@@ -30,7 +30,7 @@ jobs:
           pip install -r scraper/requirements.txt
 
       - name: Run AutoCar
-        run: python AutoCar.py
+        run: python public/AutoCar.py
         env:
           # Path the scraper writes to (relative to repo root).
           OUTPUT_PATH: public/auto_data.json
