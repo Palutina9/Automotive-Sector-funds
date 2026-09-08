@@ -34,12 +34,12 @@ api_periodic = "https://agahsectorfund.ir/api/v1/public/fundReturnPeriodic/2"
 api_daily = "https://agahsectorfund.ir/api/v1/public/fundReturnDaily/2"
 
 # fixed section
-response = requests.get(api_periodic)
+response = requests.get(api_periodic, timeout = 10)
 response.raise_for_status()
 data = response.json()
 rows = data['rows'][:8]
 
-roozaneh = requests.get(api_daily)
+roozaneh = requests.get(api_daily, timeout = 10)
 roozaneh.raise_for_status()
 data_daily = roozaneh.json()[0]
 
@@ -61,7 +61,7 @@ jadval.append({
 
 
 def apietelaat(name, api_periodic, api_daily, navapi):
-    response = requests.get(api_periodic, headers= headers)
+    response = requests.get(api_periodic, headers= headers, timeout = 10)
     response.raise_for_status()
     data = response.json()
     rows = data['rows'][:8]
@@ -70,12 +70,12 @@ def apietelaat(name, api_periodic, api_daily, navapi):
             name + "_fundSimpleReturn": row['fundSimpleReturn']
             })
 
-    roozaneh = requests.get(api_daily)
+    roozaneh = requests.get(api_daily, timeout = 10)
     data_daily = roozaneh.json()[0]
     jadval.append({
         name + "_fundDailyReturn": data_daily['fundDailyReturn'],
         })
-    navnum = requests.get(navapi)
+    navnum = requests.get(navapi, timeout = 10)
     navnum.raise_for_status()
     jadval.append({
         name + "_fundNAV": fa_to_float(navnum.json()['nav']),
@@ -83,7 +83,7 @@ def apietelaat(name, api_periodic, api_daily, navapi):
     
 
 def ajaxetelaat(name, link, payload, navapi):
-    resp = requests.post(link, data=payload, headers=headers)
+    resp = requests.post(link, data=payload, headers=headers, timeout = 10)
     resp.raise_for_status()
     
     soup = BeautifulSoup(resp.text, "html.parser")
@@ -102,7 +102,7 @@ def ajaxetelaat(name, link, payload, navapi):
                     jadval.append({
                         name + "_fundSimpleReturn": value
                     })
-    navnum = requests.get(navapi)
+    navnum = requests.get(navapi, timeout = 10)
     navnum.raise_for_status()
     nav = navnum.json()
     if isinstance(nav, str):
