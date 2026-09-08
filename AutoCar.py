@@ -25,6 +25,15 @@ def fa_to_float(s):
     s = s.replace("٫", ".")
     s = s.replace(",", "")
     return -float(s) if negative else float(s)
+def safe_get(url, **kwargs):
+    try:
+        resp = requests.get(url, timeout=10, **kwargs)
+        resp.raise_for_status()
+        print(f"OK: {url}")
+        return resp
+    except requests.exceptions.RequestException as e:
+        print(f"FAILED: {url} -> {e}")
+        return None
 
 headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
@@ -61,7 +70,7 @@ jadval.append({
 
 
 def apietelaat(name, api_periodic, api_daily, navapi):
-    response = requests.get(api_periodic, headers= headers, timeout = 10)
+    response = safe_get(api_periodic, headers= headers, timeout = 10)
     response.raise_for_status()
     data = response.json()
     rows = data['rows'][:8]
@@ -70,7 +79,7 @@ def apietelaat(name, api_periodic, api_daily, navapi):
             name + "_fundSimpleReturn": row['fundSimpleReturn']
             })
 
-    roozaneh = requests.get(api_daily, timeout = 10)
+    roozaneh = safe_get(api_daily, timeout = 10)
     data_daily = roozaneh.json()[0]
     jadval.append({
         name + "_fundDailyReturn": data_daily['fundDailyReturn'],
